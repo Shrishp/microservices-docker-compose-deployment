@@ -305,5 +305,8 @@ Solution: Added `adservice` and required environment variable
 ---
 
 # Final Outcome
-
 Successfully deployed a distributed microservices architecture using Docker Compose on an ARM-based system with AMD64 container emulation.
+
+<img width="1255" height="862" alt="Screenshot 2026-02-20 at 2 55 36 PM" src="https://github.com/user-attachments/assets/fccddb6b-df7e-4848-a887-25abe434f254" />
+<img width="1431" height="369" alt="Screenshot 2026-02-20 at 2 56 40 PM" src="https://github.com/user-attachments/assets/12f25b61-ff48-4558-b482-dd54a22d2887" />
+
