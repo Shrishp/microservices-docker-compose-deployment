@@ -1,81 +1,79 @@
-# microservices-docker-compose-deployment
+# Online Boutique – Docker Compose Deployment
 
-Online Boutique – Docker Compose Deployment
-📌 Project Overview
+## Project Overview
 
-This project converts the Google Cloud Microservices Demo (Online Boutique) — originally designed for Kubernetes — into a Docker Compose-based architecture running on Ubuntu.
+This project converts the Google Cloud **Microservices Demo (Online Boutique)** — originally designed for Kubernetes — into a Docker Compose-based deployment running on Ubuntu.
 
-The goal was to:
+The objective was to:
 
-Understand microservices architecture
+- Replace Kubernetes orchestration with Docker Compose
+- Manually configure service-to-service communication
+- Run a distributed microservices architecture locally
+- Resolve ARM64 (Apple Silicon) vs AMD64 container compatibility
+- Debug multi-container dependency failures
 
-Replace Kubernetes orchestration with Docker Compose
+---
 
-Configure service-to-service communication manually
+# Architecture
 
-Resolve cross-architecture (ARM vs AMD64) issues
+Online Boutique is a cloud-native e-commerce platform composed of multiple independent microservices communicating using gRPC.
 
-Debug distributed container failures
+Each service runs in its own container and communicates through Docker’s internal bridge network.
 
-🏗 Architecture
+---
 
-The application is a cloud-native e-commerce platform composed of multiple independent microservices communicating via gRPC.
+## Services Included
 
-🧩 Services Included
+- frontend
+- productcatalogservice
+- currencyservice
+- cartservice
+- recommendationservice
+- shippingservice
+- paymentservice
+- emailservice
+- checkoutservice
+- adservice
+- redis
 
-frontend
+---
 
-productcatalogservice
+# Tech Stack
 
-currencyservice
+- Ubuntu 24.04 LTS
+- Docker CE (Official Repository)
+- Docker Compose Plugin
+- Redis
+- gRPC-based microservices
+- QEMU (Multi-Architecture Emulation)
 
-cartservice
+---
 
-recommendationservice
+# Environment Details
 
-shippingservice
+| Component | Value |
+|-----------|--------|
+| Host Machine | MacBook Pro M2 Pro |
+| Architecture | ARM64 |
+| VM | Ubuntu 24.04 |
+| Container Architecture | AMD64 (via emulation) |
 
-paymentservice
+---
 
-emailservice
+# Installation & Setup
 
-checkoutservice
+## 1️⃣ Install Docker (Official Method)
 
-adservice
+Remove old Docker if installed:
 
-redis (database)
-
-Each service runs in its own container.
-
-🛠 Tech Stack
-
-Ubuntu 24.04 LTS
-
-Docker CE (Official Repository)
-
-Docker Compose Plugin
-
-Redis
-
-gRPC-based microservices
-
-QEMU (for cross-architecture emulation)
-
-💻 Environment Details
-Component	Value
-Host Machine	MacBook Pro M2 Pro (ARM64)
-VM	Ubuntu 24.04
-Architecture	ARM64
-Container Architecture	AMD64 (via emulation)
-🚀 Installation & Setup
-1️⃣ Install Docker (Official Method)
-
-Remove old docker:
-
+```bash
 sudo apt remove docker.io -y
+sudo apt autoremove -y
+```
 
-Install Docker official repository:
+Install Docker Official Repository:
 
+```bash
 sudo apt update
 sudo apt install ca-certificates curl gnupg -y
 
@@ -89,95 +87,223 @@ echo \
 
 sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+```
 
 Verify:
 
+```bash
 docker --version
 docker compose version
-2️⃣ Enable Multi-Architecture Support (Important for M2 ARM)
+```
 
-Since the host machine is ARM64 but images are AMD64:
+---
 
+## 2️⃣ Enable Multi-Architecture Support (For Apple Silicon / ARM)
+
+Since the host machine is ARM64 but images are AMD64, enable QEMU emulation:
+
+```bash
 docker run --privileged --rm tonistiigi/binfmt --install all
+```
 
 Verify:
 
+```bash
 docker run --rm --platform linux/amd64 alpine uname -m
+```
 
-Expected output:
+Expected Output:
 
+```
 x86_64
-3️⃣ Run the Application
+```
 
-Clone or create project folder:
+---
 
+## 3️⃣ Project Setup
+
+Create project directory:
+
+```bash
 mkdir online-boutique
 cd online-boutique
+```
 
-Create docker-compose.yaml.
+Create a file:
 
-Then run:
+```
+docker-compose.yaml
+```
 
+---
+
+# docker-compose.yaml
+
+```yaml
+services:
+
+  redis:
+    image: redis:7.2-alpine
+    restart: always
+
+  productcatalogservice:
+    image: gcr.io/google-samples/microservices-demo/productcatalogservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=3550
+    restart: always
+
+  currencyservice:
+    image: gcr.io/google-samples/microservices-demo/currencyservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=7000
+    restart: always
+
+  cartservice:
+    image: gcr.io/google-samples/microservices-demo/cartservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - REDIS_ADDR=redis:6379
+      - PORT=7070
+    restart: always
+
+  recommendationservice:
+    image: gcr.io/google-samples/microservices-demo/recommendationservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=8080
+      - PRODUCT_CATALOG_SERVICE_ADDR=productcatalogservice:3550
+    restart: always
+
+  shippingservice:
+    image: gcr.io/google-samples/microservices-demo/shippingservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=50051
+    restart: always
+
+  paymentservice:
+    image: gcr.io/google-samples/microservices-demo/paymentservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=50051
+    restart: always
+
+  emailservice:
+    image: gcr.io/google-samples/microservices-demo/emailservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=8080
+    restart: always
+
+  checkoutservice:
+    image: gcr.io/google-samples/microservices-demo/checkoutservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=5050
+      - PRODUCT_CATALOG_SERVICE_ADDR=productcatalogservice:3550
+      - SHIPPING_SERVICE_ADDR=shippingservice:50051
+      - PAYMENT_SERVICE_ADDR=paymentservice:50051
+      - EMAIL_SERVICE_ADDR=emailservice:8080
+      - CURRENCY_SERVICE_ADDR=currencyservice:7000
+      - CART_SERVICE_ADDR=cartservice:7070
+    restart: always
+
+  adservice:
+    image: gcr.io/google-samples/microservices-demo/adservice:v0.8.0
+    platform: linux/amd64
+    environment:
+      - PORT=9555
+    restart: always
+
+  frontend:
+    image: gcr.io/google-samples/microservices-demo/frontend:v0.8.0
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - PRODUCT_CATALOG_SERVICE_ADDR=productcatalogservice:3550
+      - CURRENCY_SERVICE_ADDR=currencyservice:7000
+      - CART_SERVICE_ADDR=cartservice:7070
+      - RECOMMENDATION_SERVICE_ADDR=recommendationservice:8080
+      - SHIPPING_SERVICE_ADDR=shippingservice:50051
+      - CHECKOUT_SERVICE_ADDR=checkoutservice:5050
+      - AD_SERVICE_ADDR=adservice:9555
+    restart: always
+```
+
+---
+
+# ▶ Run Application
+
+```bash
 docker compose up -d
+```
 
 Check status:
 
+```bash
 docker ps
+```
 
-All services should show:
+All containers should show:
 
+```
 Up
-🌐 Access Application
+```
+
+---
+
+# Access Application
 
 Inside VM:
 
+```bash
 curl localhost:8080
+```
 
 From browser:
 
+```
 http://<VM-IP>:8080
-🐞 Issues Faced & Solutions
-❌ 1. Docker Compose Plugin Not Found
+```
 
-Cause:
-Ubuntu default repo installs docker.io without compose plugin.
+---
 
-Solution:
-Installed Docker from official Docker repository.
+# Issues Faced & Resolved
 
-❌ 2. Unauthenticated Artifact Registry Error
+### 1. Docker Compose Plugin Not Found
+Cause: Ubuntu default `docker.io` does not include compose plugin  
+Solution: Installed Docker from official Docker repository
 
-Error:
+### 2. Artifact Registry Authentication Error
+Cause: Google moved images to Artifact Registry requiring authentication  
+Solution: Used public `gcr.io` images
 
-denied: Unauthenticated request
+### 3. exec format error
+Cause: ARM64 host running AMD64 containers  
+Solution: Enabled multi-architecture support using QEMU
 
-Cause:
-Google migrated images to Artifact Registry requiring authentication.
+### 4. Frontend Crash Loop
+Cause: Missing `AD_SERVICE_ADDR` environment variable  
+Solution: Added `adservice` and required environment variable
 
-Solution:
-Used public gcr.io images instead.
+---
 
-❌ 3. exec format error
+# DevOps Concepts Demonstrated
 
-Error:
+- Microservices architecture
+- Docker networking & service discovery
+- Container debugging & log analysis
+- Cross-architecture compatibility (ARM vs AMD)
+- Multi-container orchestration
+- Distributed system troubleshooting
+- Production-style debugging approach
 
-exec /src/server: exec format error
+---
 
-Cause:
-ARM64 host running AMD64 containers.
+# Final Outcome
 
-Solution:
-Enabled multi-architecture emulation using QEMU and:
-
-platform: linux/amd64
-❌ 4. Frontend Restarting
-
-Error:
-
-panic: environment variable "AD_SERVICE_ADDR" not set
-
-Cause:
-Missing adservice container and environment variable.
-
-Solution:
-Added adservice and AD_SERVICE_ADDR=adservice:9555.
+Successfully deployed a distributed microservices architecture using Docker Compose on an ARM-based system with AMD64 container emulation.
